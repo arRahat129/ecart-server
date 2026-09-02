@@ -17,6 +17,7 @@ async function register(req, res, next) {
             name,
             email,
             password: hashedPassword,
+            role: 'customer',
             createdAt: new Date(),
         });
 
@@ -49,6 +50,7 @@ async function login(req, res, next) {
                 sub: customer._id.toString(),
                 email: customer.email,
                 name: customer.name,
+                role: customer.role,
             },
             process.env.JWT_SECRET,
             { expiresIn: '7d' }
@@ -60,6 +62,7 @@ async function login(req, res, next) {
                 id: customer._id,
                 name: customer.name,
                 email: customer.email,
+                role: customer.role,
             },
         });
     }

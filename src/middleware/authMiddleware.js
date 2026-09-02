@@ -16,13 +16,21 @@ function protect(req, res, next) {
             next();
         }
         catch (error) {
-            return res.status(401).json({ message: 'Not authorized! '});
+            return res.status(401).json({ message: 'Not authorized! ' });
         }
     }
 
     if (!token) {
-        return res.status(401).json({ message: 'Not authorized! '})
+        return res.status(401).json({ message: 'Not authorized! ' })
     }
+
 }
 
-module.exports = { protect };
+function isAdmin(req, res, next) {
+    if (req.user && req.user.role === "admin") {
+        return next();
+    }
+    return res.status(403).json({ message: 'Forbidden: Admin Access Only!' });
+}
+
+module.exports = { protect, isAdmin };
