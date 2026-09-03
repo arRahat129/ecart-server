@@ -4,7 +4,7 @@ const { getDB } = require('../config/db');
 
 async function register(req, res, next) {
     try {
-        const { name, email, password } = req.body;
+        const { name, email, password, image } = req.body;
         const db = getDB();
 
         const existing = await db.collection('customers').findOne({ email });
@@ -17,6 +17,7 @@ async function register(req, res, next) {
             name,
             email,
             password: hashedPassword,
+            image: image || "https://i.ibb.co.com/ynXfy4wg/pngtree-user-profile-avatar-png-image-10211467.png",
             role: 'customer',
             createdAt: new Date(),
         });
@@ -51,6 +52,7 @@ async function login(req, res, next) {
                 email: customer.email,
                 name: customer.name,
                 role: customer.role,
+                image: customer.image,
             },
             process.env.JWT_SECRET,
             { expiresIn: '7d' }
