@@ -1,6 +1,6 @@
 const { ObjectId } = require("mongodb");
 
-const { getDB } = requrie('../config/db.js');
+const { getDB } = require('../config/db.js');
 
 async function getAddresses(req, res, next) {
     try {
