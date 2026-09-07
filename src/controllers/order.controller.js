@@ -7,13 +7,13 @@ async function placeOrder(req, res, next) {
     try {
         const db = getDB();
         const { addressId, paymentMethod } = req.body;
-        const cart = await db.colelction('carts').findOne({ customerId: req.user.sub });
+        const cart = await db.collection('carts').findOne({ customerId: req.user.sub });
 
         if (!cart || cart.items.length === 0) {
             return res.status(400).json({ message: "Cart is empty!" });
         }
 
-        const address = await db.colelction('addresses').findOne({ _id: new ObjectId(addressId), customerId: req.user.sub });
+        const address = await db.collection('addresses').findOne({ _id: new ObjectId(addressId), customerId: req.user.sub });
 
         if (!address) {
             return res.status(404).json({ message: 'Address Not Found!' });
@@ -21,7 +21,7 @@ async function placeOrder(req, res, next) {
 
         const total = cart.items.reduct((sum, item) => sum + item.price * item.quantity, 0);
 
-        const result = await db.colelction('orders').insertOne({
+        const result = await db.collection('orders').insertOne({
             customerId: req.user.sub,
             items: cart.items,
             address,
@@ -42,7 +42,7 @@ async function placeOrder(req, res, next) {
 async function getMyOrders(req, res, next) {
     try {
         const db = getDB();
-        const orders = await db.colelction('orders').find({ customerId: req.user.sub }).sort({ createdAt: -1 }).toArray();
+        const orders = await db.collection('orders').find({ customerId: req.user.sub }).sort({ createdAt: -1 }).toArray();
         res.json(orders);
     }
     catch (err) {
@@ -54,7 +54,7 @@ async function getOrderById(req, res, next) {
     try {
         const db = getDB();
 
-        const order = await db.colelction('orders').findOne({ _id: new ObjectId(req.params.id), customerId: req.user.sub });
+        const order = await db.collection('orders').findOne({ _id: new ObjectId(req.params.id), customerId: req.user.sub });
 
         if (!order) {
             return res.status(404).json({ message: 'Order not found!' });
@@ -87,7 +87,7 @@ async function updateOrderStatus(req, res, next) {
             return res.status(400).json({ message: `Status must be one of: ${VALID_STATUSES.join(', ')}` });
         }
 
-        const result = await db.colelction('orders').findOneAndUpdate(
+        const result = await db.collection('orders').findOneAndUpdate(
             { _id: new ObjectId(req.params.id) },
             { $set: { status, updatedAt: new Date() } },
             { returnDocument: 'after' },
