@@ -19,7 +19,7 @@ async function placeOrder(req, res, next) {
             return res.status(404).json({ message: 'Address Not Found!' });
         }
 
-        const total = cart.items.reduct((sum, item) => sum + item.price * item.quantity, 0);
+        const total = cart.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
         const result = await db.collection('orders').insertOne({
             customerId: req.user.sub,
@@ -31,7 +31,7 @@ async function placeOrder(req, res, next) {
             createdAt: new Date(),
         });
 
-        await db.colelction('carts').updateOne({ customerId: req.user.sub }, { $set: { items: [] } });
+        await db.collection('carts').updateOne({ customerId: req.user.sub }, { $set: { items: [] } });
         res.status(201).json({ message: 'Order placed', orderId: result.insertedId });
     }
     catch (err) {
