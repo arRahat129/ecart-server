@@ -63,7 +63,7 @@ async function updateMe(req, res, next) {
 
         updates.updatedAt = new Date();
 
-        const result = await db.collection('customer').findOneAndUpdate(
+        const result = await db.collection('customers').findOneAndUpdate(
             { _id: new ObjectId(req.user.sub) },
             { $set: updates },
             { returnDocument: 'after', projection: { password: 0 } },
