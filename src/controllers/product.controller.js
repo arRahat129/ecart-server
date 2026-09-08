@@ -90,6 +90,11 @@ async function createProduct(req, res, next) {
 async function updateMyProduct(req, res, next) {
     try {
         const db = getDB();
+
+        if (!ObjectId.isValid(req.params.id)) {
+            return res.status(400).json({ message: 'Invalid product ID' });
+        }
+
         const product = await db.collection('products').findOne({ _id: new ObjectId(req.params.id) });
         if (!product) return res.status(404).json({ message: 'Product not found' });
         if (product.sellerId !== req.user.sub)
@@ -103,6 +108,7 @@ async function updateMyProduct(req, res, next) {
         if (category !== undefined) updates.category = category;
         if (image !== undefined) updates.image = image;
         if (stock !== undefined) updates.stock = parseInt(stock);
+        updates.status = 'pending';
         updates.updatedAt = new Date();
 
         const result = await db.collection('products').findOneAndUpdate(
