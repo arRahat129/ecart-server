@@ -142,6 +142,18 @@ async function updateOrderStatusBySeller(req, res, next) {
             return res.status(400).json({ message: 'Only pending orders can be accepted or rejected' });
         }
 
+        if (status === 'processing') {
+            const sellerItems = order.items.filter(i => i.sellerId === req.user.sub);
+            await Promise.all(
+                sellerItems.map(item =>
+                    db.collection('products').updateOne(
+                        { _id: new ObjectId(item.productId) },
+                        { $inc: { stock: -item.quantity } }
+                    )
+                )
+            );
+        }
+
         const result = await db.collection('orders').findOneAndUpdate(
             { _id: new ObjectId(req.params.id) },
             { $set: { status, updatedAt: new Date() } }, { returnDocument: 'after' }
@@ -150,5 +162,59 @@ async function updateOrderStatusBySeller(req, res, next) {
     } catch (err) { next(err); }
 }
 
+async function cancelOrderByBuyer(req, res, next) {
+    try {
+        const db = getDB();
+        const { reason } = req.body;
+        const order = await db.collection('orders').findOne({ _id: new ObjectId(req.params.id), customerId: req.user.sub });
+        if (!order) return res.status(404).json({ message: 'Order not found' });
+        if (!['pending', 'processing'].includes(order.status))
+            return res.status(400).json({ message: 'Cannot cancel order after it has been shipped' });
 
-module.exports = { placeOrder, getMyOrders, getOrderById, getAllOrders, updateOrderStatus, getOrdersForMyProducts, updateOrderStatusBySeller };
+        const result = await db.collection('orders').findOneAndUpdate(
+            { _id: new ObjectId(req.params.id) },
+            {
+                $set: {
+                    status: 'cancelled',
+                    cancelledBy: 'buyer',
+                    cancellationReason: reason || '',
+                    updatedAt: new Date(),
+                },
+            },
+            { returnDocument: 'after' }
+        );
+        res.json(result);
+    } catch (err) { next(err); }
+}
+
+
+async function cancelOrderBySeller(req, res, next) {
+    try {
+        const db = getDB();
+        const { reason } = req.body;
+        const order = await db.collection('orders').findOne({ _id: new ObjectId(req.params.id) });
+        if (!order) return res.status(404).json({ message: 'Order not found' });
+        const hasSellersItem = order.items.some(i => i.sellerId === req.user.sub);
+        if (!hasSellersItem)
+            return res.status(403).json({ message: 'You do not have products in this order' });
+        if (!['pending', 'processing'].includes(order.status))
+            return res.status(400).json({ message: 'Cannot cancel order after it has been shipped' });
+
+        const result = await db.collection('orders').findOneAndUpdate(
+            { _id: new ObjectId(req.params.id) },
+            {
+                $set: {
+                    status: 'cancelled',
+                    cancelledBy: 'seller',
+                    cancellationReason: reason || '',
+                    updatedAt: new Date(),
+                },
+            },
+            { returnDocument: 'after' }
+        );
+        res.json(result);
+    } catch (err) { next(err); }
+}
+
+
+module.exports = { placeOrder, getMyOrders, getOrderById, getAllOrders, updateOrderStatus, getOrdersForMyProducts, updateOrderStatusBySeller, cancelOrderByBuyer, cancelOrderBySeller };
