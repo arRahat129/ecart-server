@@ -13,6 +13,9 @@ async function placeOrder(req, res, next) {
             return res.status(400).json({ message: "Cart is empty!" });
         }
 
+        const ownItem = cart.items.find(i => i.sellerId === req.user.sub);
+        if (ownItem) return res.status(400).json({ message: `You cannot buy your own product: "${ownItem.name}"` });
+
         const address = await db.collection('addresses').findOne({ _id: new ObjectId(addressId), customerId: req.user.sub });
 
         if (!address) {
@@ -103,5 +106,49 @@ async function updateOrderStatus(req, res, next) {
     }
 }
 
+async function getOrdersForMyProducts(req, res, next) {
+    try {
+        const db = getDB();
+        const orders = await db.collection('orders')
+            .find({ 'items.sellerId': req.user.sub })
+            .sort({ createdAt: -1 })
+            .toArray();
+        const result = orders.map(order => ({
+            ...order,
+            items: order.items.filter(i => i.sellerId === req.user.sub),
+        }));
+        res.json(result);
+    } catch (err) { next(err); }
+}
 
-module.exports = { placeOrder, getMyOrders, getOrderById, getAllOrders, updateOrderStatus };
+async function updateOrderStatusBySeller(req, res, next) {
+    try {
+        const db = getDB();
+        const { status } = req.body;
+        if (!['processing', 'cancelled'].includes(status)) {
+            return res.status(400).json({ message: 'Seller can only set status to "processing" (accept) or "cancelled" (reject)' });
+        }
+
+        const order = await db.collection('orders').findOne({ _id: new ObjectId(req.params.id) });
+
+        if (!order) {
+            return res.status(404).json({ message: 'Order not found' });
+        }
+        const hasSellersItem = order.items.some(i => i.sellerId === req.user.sub);
+        if (!hasSellersItem) {
+            return res.status(403).json({ message: 'You do not have products in this order' });
+        }
+        if (order.status !== 'pending') {
+            return res.status(400).json({ message: 'Only pending orders can be accepted or rejected' });
+        }
+
+        const result = await db.collection('orders').findOneAndUpdate(
+            { _id: new ObjectId(req.params.id) },
+            { $set: { status, updatedAt: new Date() } }, { returnDocument: 'after' }
+        );
+        res.json(result);
+    } catch (err) { next(err); }
+}
+
+
+module.exports = { placeOrder, getMyOrders, getOrderById, getAllOrders, updateOrderStatus, getOrdersForMyProducts, updateOrderStatusBySeller };

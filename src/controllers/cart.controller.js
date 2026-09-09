@@ -23,21 +23,29 @@ async function addToCart(req, res, next) {
             return res.status(404).json({ message: 'Product not found!' });
         }
 
+        if (product.sellerId && product.sellerId === req.user.sub) {
+            return res.status(400).json({ message: 'You cannot buy your own product' });
+        }
+
         const cart = await db.collection('carts').findOne({ customerId: req.user.sub });
+
+        const newItem = {
+            productId,
+            name: product.name,
+            price: product.price,
+            image: product.image,
+            quantity,
+            sellerId: product.sellerId ?? '',
+            sellerName: product.sellerName ?? '',
+        };
 
         if (cart) {
             const itemIndex = cart.items.findIndex(i => i.productId === productId);
-            if (itemIndex > -1){
+            if (itemIndex > -1) {
                 cart.items[itemIndex].quantity += quantity;
             }
             else {
-                cart.items.push({
-                    productId,
-                    name: product.name,
-                    price: product.price,
-                    image: product.image,
-                    quantity,
-                });
+                cart.items.push(newItem);
             }
 
             await db.collection('carts').updateOne(
@@ -48,13 +56,7 @@ async function addToCart(req, res, next) {
         else {
             await db.collection('carts').insertOne({
                 customerId: req.user.sub,
-                items: [{
-                    productId,
-                    name: product.name,
-                    price: product.price,
-                    image: product.image,
-                    quantity,
-                }]
+                items: [newItem]
             });
         }
 
