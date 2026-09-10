@@ -4,7 +4,7 @@ const { ObjectId } = require('mongodb');
 async function getAllProducts(req, res, next) {
     try {
         const db = getDB();
-        const { category, search, page = 1, limit = 12 } = req.query;
+        const { category, search, status, sellerId, page = 1, limit = 12 } = req.query;
         const filter = {};
 
         if (category) {
@@ -16,6 +16,14 @@ async function getAllProducts(req, res, next) {
                 $regex: search,
                 $options: 'i'
             };
+        }
+
+        if (status) {
+            filter.status = status;
+        }
+
+        if (sellerId) {
+            filter.sellerId = sellerId;
         }
 
         const parsedPage = parseInt(page) || 1;

@@ -125,23 +125,38 @@ async function updateOrderStatusBySeller(req, res, next) {
     try {
         const db = getDB();
         const { status } = req.body;
-        if (!['processing', 'cancelled'].includes(status)) {
-            return res.status(400).json({ message: 'Seller can only set status to "processing" (accept) or "cancelled" (reject)' });
+
+        const SELLER_ALLOWED = ['processing', 'shipped', 'delivered', 'cancelled'];
+        if (!SELLER_ALLOWED.includes(status)) {
+            return res.status(400).json({ message: `Seller can only set status to: ${SELLER_ALLOWED.join(', ')}` });
         }
 
         const order = await db.collection('orders').findOne({ _id: new ObjectId(req.params.id) });
-
         if (!order) {
             return res.status(404).json({ message: 'Order not found' });
         }
+
         const hasSellersItem = order.items.some(i => i.sellerId === req.user.sub);
         if (!hasSellersItem) {
             return res.status(403).json({ message: 'You do not have products in this order' });
         }
-        if (order.status !== 'pending') {
-            return res.status(400).json({ message: 'Only pending orders can be accepted or rejected' });
+
+        // Define valid forward transitions for the seller
+        const TRANSITIONS = {
+            pending:    ['processing', 'cancelled'],
+            processing: ['shipped', 'cancelled'],
+            shipped:    ['delivered'],
+        };
+
+        const allowed = TRANSITIONS[order.status];
+        if (!allowed) {
+            return res.status(400).json({ message: `Cannot change status from "${order.status}"` });
+        }
+        if (!allowed.includes(status)) {
+            return res.status(400).json({ message: `Cannot move from "${order.status}" to "${status}". Allowed: ${allowed.join(', ')}` });
         }
 
+        // Decrement stock when seller first accepts (pending → processing)
         if (status === 'processing') {
             const sellerItems = order.items.filter(i => i.sellerId === req.user.sub);
             await Promise.all(
@@ -156,7 +171,8 @@ async function updateOrderStatusBySeller(req, res, next) {
 
         const result = await db.collection('orders').findOneAndUpdate(
             { _id: new ObjectId(req.params.id) },
-            { $set: { status, updatedAt: new Date() } }, { returnDocument: 'after' }
+            { $set: { status, updatedAt: new Date() } },
+            { returnDocument: 'after' }
         );
         res.json(result);
     } catch (err) { next(err); }
