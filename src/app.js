@@ -10,6 +10,7 @@ const addressRoutes = require("./routes/addresses.routes");
 const orderRoutes = require("./routes/order.routes");
 const statsRoutes = require("./routes/stats.routes");
 const attributeRoutes = require('./routes/attribute.routes');
+const speckeyRoutes = require('./routes/speckey.routes');
 const errorHandler = require("./middleware/errorHandler");
 
 const app = express();
@@ -28,6 +29,8 @@ app.use('/api/addresses', addressRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/stats', statsRoutes);
 app.use('/api/attributes', attributeRoutes);
+app.use('/api/spec-keys', speckeyRoutes);
 
 app.use(errorHandler);
+
 module.exports = app;
