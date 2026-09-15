@@ -9,6 +9,7 @@ const cartRoutes = require("./routes/cart.routes");
 const addressRoutes = require("./routes/addresses.routes");
 const orderRoutes = require("./routes/order.routes");
 const statsRoutes = require("./routes/stats.routes");
+const attributeRoutes = require('./routes/attribute.routes');
 const errorHandler = require("./middleware/errorHandler");
 
 const app = express();
@@ -26,6 +27,7 @@ app.use('/api/cart', cartRoutes);
 app.use('/api/addresses', addressRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/stats', statsRoutes);
+app.use('/api/attributes', attributeRoutes);
 
 app.use(errorHandler);
 module.exports = app;
