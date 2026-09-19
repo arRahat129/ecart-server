@@ -14,7 +14,7 @@ async function getCart(req, res, next) {
 
 async function addToCart(req, res, next) {
     try {
-        const { productId, quantity } = req.body;
+        const { productId, quantity, variantId } = req.body;
         const db = getDB();
 
         const product = await db.collection('products').findOne({ _id: new ObjectId(productId) });
@@ -27,6 +27,31 @@ async function addToCart(req, res, next) {
             return res.status(400).json({ message: 'You cannot buy your own product' });
         }
 
+        let resolvedPrice = product.price;
+        let variantLabel = null;
+
+        if (product.hasVariants) {
+            if (!variantId) {
+                return res.status(400).json({ message: 'Please select a variant' });
+            }
+
+            const variant = await db.collection('product_variants').findOne({ _id: new ObjectId(variantId) });
+        
+            if (!variant) {
+                return res.status(404).json({ message: 'Variant not found' });
+            }
+
+            if (variant.stock < quantity) {
+                return res.status(400).json({ message: 'Not enough variant stock' });
+            }
+
+            resolvedPrice = variant.price ?? product.price;
+
+            const attrVals = await db.collection('variant_attribute_values').find({ variantId: new ObjectId(variantId) }).toArray();
+
+            variantLabel = attrVals.map(a => `${a.attributeName}: ${a.value}`).join(' / ') || null; 
+        }
+
         const cart = await db.collection('carts').findOne({ customerId: req.user.sub });
 
         const newItem = {
@@ -37,6 +62,8 @@ async function addToCart(req, res, next) {
             quantity,
             sellerId: product.sellerId ?? '',
             sellerName: product.sellerName ?? '',
+            variantId: variantId ?? null,
+            variantLabel: variantLabel ?? null,
         };
 
         if (cart) {
