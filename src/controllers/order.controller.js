@@ -143,9 +143,9 @@ async function updateOrderStatusBySeller(req, res, next) {
 
         // Define valid forward transitions for the seller
         const TRANSITIONS = {
-            pending:    ['processing', 'cancelled'],
+            pending: ['processing', 'cancelled'],
             processing: ['shipped', 'cancelled'],
-            shipped:    ['delivered'],
+            shipped: ['delivered'],
         };
 
         const allowed = TRANSITIONS[order.status];
@@ -156,16 +156,19 @@ async function updateOrderStatusBySeller(req, res, next) {
             return res.status(400).json({ message: `Cannot move from "${order.status}" to "${status}". Allowed: ${allowed.join(', ')}` });
         }
 
-        // Decrement stock when seller first accepts (pending → processing)
         if (status === 'processing') {
             const sellerItems = order.items.filter(i => i.sellerId === req.user.sub);
             await Promise.all(
-                sellerItems.map(item =>
-                    db.collection('products').updateOne(
-                        { _id: new ObjectId(item.productId) },
-                        { $inc: { stock: -item.quantity } }
-                    )
-                )
+                sellerItems.map(item => {
+                    if (item.variantId) {
+                        return db.collection('product_variants').updateOne(
+                            { _id: new ObjectId(item.variantId) }, { $inc: { stock: -item.quantity } }
+                        );
+                    }
+                    return db.collection('products').updateOne(
+                        { _id: new ObjectId(item.productId) }, { $inc: { stock: -item.quantity } }
+                    );
+                })
             );
         }
 
