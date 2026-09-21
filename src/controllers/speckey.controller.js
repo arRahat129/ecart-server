@@ -11,7 +11,7 @@ async function getSpecKeys(req, res, next) {
 
         const keys = await db.collection('specification_keys').find(filter).sort({ key: 1 }).toArray();
 
-        req.json(keys);
+        res.json(keys);
     }
     catch (err) {
         next(err);
